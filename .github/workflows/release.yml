@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -count=1 ./...
+
+      - name: Build release binaries
+        run: |
+          mkdir -p dist
+          for target in \
+            "linux amd64" \
+            "linux arm64" \
+            "darwin amd64" \
+            "darwin arm64" \
+            "windows amd64"; do
+            set -- $target
+            out="mtag-${GITHUB_REF_NAME}-${1}-${2}"
+            [ "$1" = "windows" ] && out="${out}.exe"
+            GOOS=$1 GOARCH=$2 go build -trimpath -ldflags="-s -w" \
+              -o "dist/${out}" ./cmd/mtag
+          done
+          ls -la dist/
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
+          fail_on_unmatched_files: true
+
+      - name: Trigger pkg.go.dev refresh
+        run: |
+          curl -fsSL "https://proxy.golang.org/github.com/tommyo123/mtag/@v/${GITHUB_REF_NAME}.info" >/dev/null || true
