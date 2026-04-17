@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.0.1
+
+### Fixes
+
+- `flac.DecodeVorbisComment` no longer attempts a multi-GiB allocation
+  when the comment-count field in a malformed block points past the
+  end of the body. The count is now bounded against the remaining
+  bytes, and oversize values are rejected up front. A crafted 13-byte
+  block that previously stalled the FLAC fuzz target for 50 s now
+  returns an error in microseconds. CVE-level: denial of service on
+  untrusted input.
+
+### Tooling
+
+- `mtag cover <file> <image>` now handles both directions: set the
+  front cover when the image file exists, extract the embedded front
+  cover to that path when it does not. Falls back to the first
+  picture when no explicit front-cover frame is present.
+- `mtag copy <src> <dst>` surfaces a clearer error when the
+  destination does not exist and reminds the caller that `copy` only
+  moves tags between two existing files, not raw audio.
+
+### CI
+
+- `ci.yml` also triggers on `v*` tag pushes so releases exercise the
+  full matrix and fuzz smoke before a binary goes out.
+- New `release.yml` cross-compiles `cmd/mtag` for `linux/amd64`,
+  `linux/arm64`, `darwin/amd64`, `darwin/arm64`, and `windows/amd64`,
+  publishes them to a GitHub Release with auto-generated notes, and
+  pings `proxy.golang.org` to refresh pkg.go.dev.
+
 ## v1.0.0
 
 First public release.
