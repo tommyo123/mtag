@@ -305,5 +305,4 @@ the initial `v1` line.
 - [`API.md`](API.md) – full public API reference.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) – internal layout.
 - [`CHANGELOG.md`](CHANGELOG.md) – release history.
-- [`TODO.md`](TODO.md) – remaining release work.
 
