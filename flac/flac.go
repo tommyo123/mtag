@@ -211,6 +211,13 @@ func DecodeVorbisCommentWithOptions(body []byte, skipPictures bool) (*VorbisComm
 	}
 	count := int(binary.LittleEndian.Uint32(body[cur:]))
 	cur += 4
+	// Each comment needs at least a 4-byte length prefix, so a count
+	// that would require more bytes than remain is garbage. Bound the
+	// slice capacity to avoid a multi-GiB allocation from a malformed
+	// header.
+	if count < 0 || count > (len(body)-cur)/4 {
+		return nil, fmt.Errorf("flac: comment count %d exceeds body size", count)
+	}
 	out := &VorbisComment{Vendor: vendor, Fields: make([]Field, 0, count)}
 	for i := 0; i < count; i++ {
 		if cur+4 > len(body) {

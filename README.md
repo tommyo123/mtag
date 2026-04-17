@@ -271,9 +271,9 @@ go install github.com/tommyo123/mtag/cmd/mtag@latest
 
 mtag show  song.mp3
 mtag set   song.mp3 title="New Title" year=2024 track=3/12
-mtag cover song.mp3 cover.jpg
+mtag cover song.mp3 cover.jpg         # set (cover.jpg exists) or extract (does not)
 mtag strip song.mp3 v1
-mtag copy  src.mp3 dst.mp3
+mtag copy  src.mp3 dst.mp3            # both files must already exist
 mtag diff  a.mp3 b.mp3
 ```
 

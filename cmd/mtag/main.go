@@ -6,7 +6,7 @@
 //
 //	mtag show <file>
 //	mtag set   <file> key=value [key=value ...]
-//	mtag cover <file> <image-path>     # writes front-cover APIC
+//	mtag cover <file> <image-path>     # set cover if <image-path> exists, else extract
 //	mtag strip <file> v1|v2|all
 //	mtag copy  <src> <dst> [field ...] # copy tags between files
 //	mtag diff  <a> <b>                 # show field-by-field deltas
@@ -153,21 +153,63 @@ func parseTrack(s string) (int, int) {
 	return a, b
 }
 
+// cmdCover sets the front cover when the image path refers to an
+// existing file on disk, and extracts the front cover to <image>
+// when no file exists at that path yet.
 func cmdCover(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("cover: need <file> <image>")
+		return fmt.Errorf("cover: need <file> <image>\n" +
+			"       sets the front cover when <image> exists,\n" +
+			"       extracts the front cover when <image> does not")
 	}
-	f, err := mtag.Open(args[0])
+	if _, err := os.Stat(args[1]); err == nil {
+		return setCover(args[0], args[1])
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return extractCover(args[0], args[1])
+}
+
+func setCover(audioPath, imagePath string) error {
+	f, err := mtag.Open(audioPath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	data, err := os.ReadFile(args[1])
+	data, err := os.ReadFile(imagePath)
 	if err != nil {
 		return err
 	}
-	f.SetCoverArt(guessMIME(args[1]), data)
+	f.SetCoverArt(guessMIME(imagePath), data)
 	return f.Save()
+}
+
+func extractCover(audioPath, imagePath string) error {
+	f, err := mtag.Open(audioPath, mtag.WithReadOnly())
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	for _, img := range f.Images() {
+		if img.Type != mtag.PictureCoverFront {
+			continue
+		}
+		if err := os.WriteFile(imagePath, img.Data, 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("extracted front cover: %s (%d bytes, %s)\n", imagePath, len(img.Data), img.MIME)
+		return nil
+	}
+	// Fall back to the first picture of any type when no explicit
+	// front-cover is present.
+	if imgs := f.Images(); len(imgs) > 0 {
+		if err := os.WriteFile(imagePath, imgs[0].Data, 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("extracted image: %s (%d bytes, %s)\n", imagePath, len(imgs[0].Data), imgs[0].MIME)
+		return nil
+	}
+	return fmt.Errorf("%s has no embedded images", audioPath)
 }
 
 func cmdStrip(args []string) error {
@@ -200,16 +242,22 @@ func cmdStrip(args []string) error {
 // alone.
 func cmdCopy(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("copy: need <src> <dst> [field ...]")
+		return fmt.Errorf("copy: need <src> <dst> [field ...]\n" +
+			"       both files must already exist; copy only moves tags, not audio")
 	}
 	src, err := mtag.Open(args[0])
 	if err != nil {
-		return fmt.Errorf("open src: %w", err)
+		return fmt.Errorf("open src %q: %w", args[0], err)
 	}
 	defer src.Close()
+	if _, err := os.Stat(args[1]); err != nil {
+		return fmt.Errorf("open dst %q: %w\n"+
+			"  mtag copy writes tags into an existing file; create it with your "+
+			"audio tool of choice first", args[1], err)
+	}
 	dst, err := mtag.Open(args[1])
 	if err != nil {
-		return fmt.Errorf("open dst: %w", err)
+		return fmt.Errorf("open dst %q: %w", args[1], err)
 	}
 	defer dst.Close()
 
