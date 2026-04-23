@@ -23,7 +23,7 @@ func locateMPEGSummary(frame []byte) (mpegSummaryLayout, bool) {
 	if len(frame) < 8 {
 		return mpegSummaryLayout{}, false
 	}
-	if pos, ok := expectedMPEGSummaryOffset(frame); ok {
+	if pos, ok := expectedMPEGSummaryOffset(frame); ok && pos >= 0 && pos+8 <= len(frame) {
 		tag := string(frame[pos : pos+4])
 		if tag == "Xing" || tag == "Info" {
 			flags := binary.BigEndian.Uint32(frame[pos+4 : pos+8])
