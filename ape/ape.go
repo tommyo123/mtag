@@ -315,7 +315,13 @@ func Decode(b []byte) (*Tag, error) {
 }
 
 func decodeFields(b []byte, expected int) ([]Field, error) {
-	out := make([]Field, 0, expected)
+	// A field record is at least 9 bytes (8-byte header + NUL name
+	// terminator), so cap the preallocation hint accordingly.
+	hint := expected
+	if hint < 0 || hint > len(b)/9 {
+		hint = len(b) / 9
+	}
+	out := make([]Field, 0, hint)
 	cur := 0
 	for cur < len(b) {
 		if cur+8 > len(b) {

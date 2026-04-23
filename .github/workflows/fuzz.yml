@@ -1,0 +1,45 @@
+name: Fuzz
+
+# When a run fails, download the uploaded reproducer and commit it
+# under tests/testdata/fuzz/<Target>/ as a permanent regression seed.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # daily at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - FuzzID3v2Read
+          - FuzzFLACReadBlocks
+          - FuzzFLACDecodeVorbisComment
+          - FuzzAPEDecode
+          - FuzzAPERead
+          - FuzzMP4ReadItems
+          - FuzzID3v1Decode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: fuzz ${{ matrix.target }}
+        run: go test -run=^$ -fuzz=${{ matrix.target }} -fuzztime=5m ./tests/
+
+      - name: upload reproducer on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-repro-${{ matrix.target }}
+          path: tests/testdata/fuzz/${{ matrix.target }}/
+          if-no-files-found: ignore
+          retention-days: 30

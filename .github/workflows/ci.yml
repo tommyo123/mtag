@@ -29,25 +29,10 @@ jobs:
       - name: go build
         run: go build ./...
 
+      # Committed seeds under testdata/fuzz/ run as regression
+      # subtests. Exploratory -fuzz runs live in fuzz.yml.
       - name: go test
         run: go test -count=1 ./...
-
-      # Fuzz smoke: 10 s each keeps CI fast while still catching
-      # most regressions.
-      - name: fuzz id3v2
-        run: go test -run=^$ -fuzz=FuzzID3v2Read -fuzztime=10s ./tests/
-      - name: fuzz flac blocks
-        run: go test -run=^$ -fuzz=FuzzFLACReadBlocks -fuzztime=10s ./tests/
-      - name: fuzz flac vorbis
-        run: go test -run=^$ -fuzz=FuzzFLACDecodeVorbisComment -fuzztime=10s ./tests/
-      - name: fuzz ape decode
-        run: go test -run=^$ -fuzz=FuzzAPEDecode -fuzztime=10s ./tests/
-      - name: fuzz ape read
-        run: go test -run=^$ -fuzz=FuzzAPERead -fuzztime=10s ./tests/
-      - name: fuzz mp4
-        run: go test -run=^$ -fuzz=FuzzMP4ReadItems -fuzztime=10s ./tests/
-      - name: fuzz id3v1
-        run: go test -run=^$ -fuzz=FuzzID3v1Decode -fuzztime=10s ./tests/
 
   build-portability:
     strategy:
