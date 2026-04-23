@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.0.2
+
+### Fixes
+
+- `mpeg_replaygain`: bounds-check the offset returned by
+  `expectedMPEGSummaryOffset` before slicing the frame. A truncated
+  MPEG frame could previously panic.
+- `ape.Decode`: clamp the `n_fields` preallocation hint to what the
+  region can physically hold. A hostile footer claiming hundreds of
+  millions of fields no longer triggers a multi-GiB allocation.
+
+### CI
+
+- Exploratory `-fuzz` runs moved out of the merge-gate CI into a
+  scheduled `fuzz.yml` (daily + manual). Committed seed corpora still
+  run on every push as regression subtests.
+
 ## v1.0.1
 
 ### Fixes
